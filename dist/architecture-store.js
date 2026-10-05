@@ -6,7 +6,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const html=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const groups={access:'统一接入',perception:'感知与交互',teaching:'教学上下文与建议',decision:'辅助决策',support:'知识与基础服务'};
 const iconNames=['grid','cloud','robot','app','globe','vision','voice','activity','steps','core','database','user','book','target','spark','gateway'];
-const view=D.modules;let defaults=clone(view),raw,history=[],persistent=true,loadError='';
+const view=D.modules;Object.setPrototypeOf(view,null);let defaults=clone(view),raw,history=[],persistent=true,loadError='';
 const placement={gateway:'access',vision:'perception',voice:'perception',activity:'teaching',step:'teaching',teaching:'teaching',core:'decision'};
 for(const [id,m] of Object.entries(defaults)){m.parent='';m.group=placement[id]||'support';}
 for(const [id,m] of Object.entries(defaults))for(const child of m.children)if(defaults[child])defaults[child].parent=id;
