@@ -28,3 +28,20 @@ window.PIPI_DATA = {
  ],
  models:[['Session','sessionId · userId · deviceId · startedAt','贯穿感知、对话与教学的会话上下文'],['VisualEvent','eventId · objectId · type · confidence · timestamp','视觉状态与事件的标准化记录'],['ActivityState','activityId · sessionId · status · currentStep','活动生命周期与当前步骤'],['StepState','stepId · completed · evidence · deadline','步骤状态、完成证据与时间约束'],['AgentDecision','decisionId · action · reason · targets','统一决策和执行目标'],['DeviceState','deviceId · online · lastHeartbeat · config','设备连接、心跳与配置']]
 };
+
+/* V0.2 活动责任调整：手机唯一推进与提交，自有云辅助与同步。 */
+(() => {
+const d=window.PIPI_DATA,m=d.modules; d.version='V0.2';
+Object.assign(m.app,{role:'组织活动与双面展示，维护当前步骤，校验回应并提交用户确认的活动事实。',input:['活动包、模型回应与候选','用户确认、设备能力和状态'],output:['已确认事件、步骤状态、展示与执行意图'],dependencies:['cloud'],children:['数字人系统','教学交互','phone-activity','phone-step','用户中心','设备中心'],note:'本轮确认：手机是活动推进与确认事实的唯一提交方。App / 小程序媒体能力仍需验证。'});
+Object.assign(m.cloud,{role:'提供活动内容、语音与视觉接入、教学与行为建议，并同步保存手机提交的确认记录。',input:['音视频、当前问题与步骤上下文','手机已确认事件、授权范围'],output:['模型回应、证据候选、辅助建议','同步回执、相关记忆'],note:'云端不与手机同时推进活动；模型候选不能直接成为完成事实。'});
+Object.assign(m.activity,{en:'活动同步与上下文',role:'维护手机提交的活动状态副本，聚合跨模态上下文供辅助建议使用，处理确认记录的同步与版本冲突。',input:['手机 Activity State、确认事件、revision','视觉证据、交互上下文'],output:['活动上下文、同步回执、冲突信息'],dependencies:['phone-activity','vision'],children:['状态副本','事件去重','版本与同步'],note:'当前步骤与活动事实由手机提交；云端只维护同步副本。与 Vision Activity Engine 的视觉事件职责分开。'});
+Object.assign(m.step,{en:'步骤上下文 · 云端',role:'提供当前步骤的规则与上下文，校验建议与证据是否适用；同步手机提交的步骤状态，不独立转换步骤。',input:['手机 Step State、stepId、revision','活动包、视觉证据'],output:['步骤规则、证据候选、辅助提示条件'],dependencies:['phone-step','knowledge'],children:['步骤上下文','规则查询','证据建议'],note:'步骤推进、检查点与确认提交由手机 Step Manager 负责。'});
+Object.assign(m.core,{en:'辅助决策与建议',role:'汇聚感知、语音、教学与记忆上下文，形成行为建议；手机校验有效轮次与确认条件后组织执行。',input:['感知 / 对话上下文、教学建议','手机当前步骤、用户与设备状态'],output:['PROACTIVE_HELP 等行为建议','提示内容、可执行意图与来源'],dependencies:['vision','voice','teaching','memory','user','device','phone-step'],note:'不直接写入活动完成事实；手机是确认状态和活动推进的唯一提交方。'});
+Object.assign(m.teaching,{role:'根据手机当前步骤、活动规则与相关经历生成教学建议、提示和具体确认问题，供手机校验使用。',output:['教学提示、确认问题建议','内容选择与证据来源']});
+Object.assign(m['vision-activity'],{note:'只产出视觉状态、事件与置信度。手机 Step Manager 在用户确认后推进步骤，云端仅维护上下文与同步副本。'});
+m['phone-activity']={name:'Activity Controller',en:'活动组织 · 手机',icon:'activity',status:'planned',role:'管理手机活动会话、生命周期、暂停与恢复；去重提交用户确认事件，保存本地记录与同步队列。',input:['活动版本、用户意图、确认事件','设备状态、同步回执'],output:['Activity State、确认事件、revision','检查点、结束原因、同步记录'],dependencies:['phone-step','cloud'],children:['会话状态','确认事件提交','本地记录','同步队列'],project:'PiPi App',note:'本轮确认：手机是活动事实唯一提交方。原型仅展示设计流程，不连接真实设备或模型。'};
+m['phone-step']={name:'Step Manager',en:'步骤推进 · 手机',icon:'steps',status:'planned',role:'维护当前步骤与待确认问题，校验模型回应的会话和轮次，在用户确认后推进或再试，并保存检查点。',input:['活动步骤规则、有效候选','用户确认、promptId、revision'],output:['Current Step、Step State','引导意图、确认事件、检查点'],dependencies:['knowledge'],children:['步骤状态机','回应校验','确认规则','检查点'],project:'PiPi App',note:'播完示范、模型判断或收到设备命令均不能自动算作步骤完成。'};
+d.models=[['Session','sessionId · activityVersion · userId · deviceId · revision','手机创建与恢复；云端关联服务会话'],['VisualEvent','eventId · frameId · type · confidence · captureTime','带时间与来源的视觉证据，不直接提交完成'],['ActivityState','activityId · sessionId · status · currentStep · revision','手机为活动状态提交方，云端保存同步副本'],['StepState','stepId · promptId · confirmed · evidenceRefs · revision','手机校验与确认后更新当前步骤'],['AgentSuggestion','suggestionId · turnId · action · sourceRefs · generation','云端辅助建议；手机校验后组织执行'],['ConfirmedEvent','eventId · promptId · speakerRef · revision · evidenceRefs','手机提交；去重、权限和个人归属分别核对'],['DeviceState','deviceId · capabilities · connectionState · lastHeartbeat','设备能力、连接与硬件反馈'],['SyncRecord','sessionId · eventId · revision · consent · sourceRefs','本地队列补传，云端去重与版本冲突处理']];
+d.interfaces[2]=['App → 云端','Context / Confirmed Event / Revision','请求 + 授权同步','Gateway / Activity Engine'];
+d.interfaces[3]=['云端 → App','Response / Candidate / Suggestion / Sync ACK','候选 + 同步回执','Voice / Vision / Agent Core'];
+})();
